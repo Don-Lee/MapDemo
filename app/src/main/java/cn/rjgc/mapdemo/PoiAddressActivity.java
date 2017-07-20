@@ -1,7 +1,10 @@
 package cn.rjgc.mapdemo;
 
 import android.databinding.DataBindingUtil;
+import android.databinding.Observable;
+import android.os.Handler;
 import android.support.constraint.ConstraintLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -21,12 +24,14 @@ import com.amap.api.services.poisearch.PoiSearch;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import cn.rjgc.mapdemo.bean.POI;
 import cn.rjgc.mapdemo.databinding.ActivityPoiAddressBinding;
 import cn.rjgc.mapdemo.utils.RecyclerViewAdapter;
 
-public class PoiAddressActivity extends AppCompatActivity implements PoiSearch.OnPoiSearchListener  {
+public class PoiAddressActivity extends AppCompatActivity implements
+        PoiSearch.OnPoiSearchListener, SwipeRefreshLayout.OnRefreshListener {
 
     private PoiSearch poiSearch;
     private PoiSearch.Query mQuery = null;
@@ -56,6 +61,8 @@ public class PoiAddressActivity extends AppCompatActivity implements PoiSearch.O
             poiBinding.errorTv.setText("定位失败，无法获取地址");
             poiBinding.errorTv.setVisibility(View.VISIBLE);
         }
+
+
     }
 
     //开始进行poi搜索
@@ -84,7 +91,7 @@ public class PoiAddressActivity extends AppCompatActivity implements PoiSearch.O
                     List<SuggestionCity> suggestionCities = poiResult
                             .getSearchSuggestionCitys();// 当搜索不到poiitem数据时，会返回含有搜索关键字的城市信息
                     if (poiItemList != null && poiItemList.size() > 0) {
-                        for (PoiItem item: poiItemList) {
+                        for (PoiItem item : poiItemList) {
                             POI poi = new POI();
                             poi.address.set(item.getTitle());
                             poi.addrDetails.set(item.getSnippet());
@@ -103,13 +110,17 @@ public class PoiAddressActivity extends AppCompatActivity implements PoiSearch.O
 
     private void setAdapter() {
         mAdapter = new RecyclerViewAdapter(this, mAdapterDatas);
+        poiBinding.recyclerview.setHasFixedSize(true);
         //设置RecyclerView的布局管理
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this,LinearLayoutManager.VERTICAL,false);
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
         poiBinding.recyclerview.setLayoutManager(linearLayoutManager);
         poiBinding.recyclerview.setItemAnimator(new DefaultItemAnimator());//给RecyclerView添加默认的动画效果
         poiBinding.recyclerview.setAdapter(mAdapter);
         //设置RecyclerView的分隔线
         poiBinding.recyclerview.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
+
+        //设置下拉刷新样式
+        setSwipeRefresh();
 
         mAdapter.setmOnItemClickListener(new RecyclerViewAdapter.OnItemClickListener() {
             @Override
@@ -128,8 +139,44 @@ public class PoiAddressActivity extends AppCompatActivity implements PoiSearch.O
         });
     }
 
+    private void setSwipeRefresh() {
+        //设置下拉出现小圆圈是否是缩放出现，出现的位置，最大的下拉位置
+        poiBinding.swipeRefresh.setProgressViewOffset(true, 50, 200);
+        //设置下拉圆圈的大小，两个值 LARGE， DEFAULT
+        poiBinding.swipeRefresh.setSize(SwipeRefreshLayout.DEFAULT);
+        //设定下拉圆圈的背景
+        poiBinding.swipeRefresh.setProgressBackgroundColorSchemeResource(R.color.colorYellow);
+
+        //设置下拉圆圈上的颜色，蓝色、绿色、橙色、红色
+        poiBinding.swipeRefresh.setColorSchemeResources(
+                android.R.color.holo_blue_bright,
+                android.R.color.holo_green_light,
+                android.R.color.holo_orange_light,
+                android.R.color.holo_red_light);
+        poiBinding.swipeRefresh.setOnRefreshListener(this);
+        // 通过 setEnabled(false) 禁用下拉刷新
+//        poiBinding.swipeRefresh.setEnabled(false);
+    }
+
     @Override
     public void onPoiItemSearched(PoiItem poiItem, int i) {
 
+    }
+
+    @Override
+    public void onRefresh() {
+        new Handler().postDelayed(new Runnable() {
+            public void run() {
+                POI poi = new POI();
+                poi.address.set("test");
+                poi.addrDetails.set("hello");
+                poi.isSelected.set(false);
+
+                mAdapter.addData(0,poi);
+//                mAdapter.notifyDataSetChanged();
+                //停止刷新动画
+                poiBinding.swipeRefresh.setRefreshing(false);
+            }
+        }, 3000);
     }
 }

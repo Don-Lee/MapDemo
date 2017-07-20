@@ -20,6 +20,10 @@ android {
     dataBinding {
         enabled = true
     }
+
+    repositories{
+        maven { url "https://jitpack.io" }
+    }
 }
 
 dependencies {
@@ -33,4 +37,6 @@ dependencies {
     testCompile 'junit:junit:4.12'
     compile files('libs/AMap_Search_V5.0.0_20170309.jar')
     compile 'com.android.support:recyclerview-v7:25.3.1'
+
+    compile 'com.github.Aspsine:SwipeToLoadLayout:1.0.4'
 }

@@ -64,6 +64,11 @@ implements View.OnClickListener, View.OnLongClickListener{
         return result;
     }
 
+    public void addData(int position, POI poi) {
+        datas.add(position, poi);
+        notifyDataSetChanged();
+//        notifyItemInserted(position);  //此方法定向更新
+    }
     public void deleteData(int position){
         datas.remove(position);
         notifyDataSetChanged();
