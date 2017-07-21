@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
@@ -46,6 +47,8 @@ public class PoiAddressActivity extends AppCompatActivity implements
     private LatLonPoint lp = null;
     private ActivityPoiAddressBinding poiBinding;
 
+    private int lastVisibleItem;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,11 +61,18 @@ public class PoiAddressActivity extends AppCompatActivity implements
             poiBinding.errorTv.setVisibility(View.GONE);
             doSearchQuery();//开始搜索
         } else {
-            poiBinding.errorTv.setText("定位失败，无法获取地址");
-            poiBinding.errorTv.setVisibility(View.VISIBLE);
+            errorMsg("定位失败，无法获取地址");
         }
 
 
+    }
+
+    private void errorMsg(String s) {
+//        poiBinding.recyclerview.setVisibility(View.GONE);
+        poiBinding.errorTv.setText(s);
+        poiBinding.errorTv.setVisibility(View.VISIBLE);
+//            通过 setEnabled(false) 禁用下拉刷新
+        poiBinding.swipeRefresh.setEnabled(false);
     }
 
     //开始进行poi搜索
@@ -105,6 +115,15 @@ public class PoiAddressActivity extends AppCompatActivity implements
                 }
 
             }
+        }else{
+            //子线程更新UI
+            poiBinding.errorTv.post(new Runnable() {
+                @Override
+                public void run() {
+                    errorMsg("网络错误，请检查网络");
+                }
+            });
+
         }
     }
 
@@ -121,6 +140,10 @@ public class PoiAddressActivity extends AppCompatActivity implements
 
         //设置下拉刷新样式
         setSwipeRefresh();
+
+        //设置上拉加载更多
+        setLoadMore();
+
 
         mAdapter.setmOnItemClickListener(new RecyclerViewAdapter.OnItemClickListener() {
             @Override
@@ -158,6 +181,40 @@ public class PoiAddressActivity extends AppCompatActivity implements
 //        poiBinding.swipeRefresh.setEnabled(false);
     }
 
+    //上拉记载更多
+    private void setLoadMore() {
+        poiBinding.recyclerview.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                super.onScrollStateChanged(recyclerView, newState);
+                if (newState == RecyclerView.SCROLL_STATE_IDLE
+                        && lastVisibleItem + 1 == mAdapter.getItemCount()) {
+                    mAdapter.changeFooterViewState(RecyclerViewAdapter.LOADING_MORE);
+                    // 此处在现实项目中，请换成网络请求数据代码，sendRequest .....
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            List<POI> data = new ArrayList<POI>();
+                            POI poi = new POI();
+                            poi.address.set("上拉加载");
+                            poi.addrDetails.set("hellp");
+                            poi.isSelected.set(false);
+                            data.add(poi);
+                            mAdapter.addMoreItem(data);
+                            mAdapter.changeFooterViewState(RecyclerViewAdapter.PULLUP_LOAD_MORE);
+                        }
+                    }, 2500);
+                }
+            }
+
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+                LinearLayoutManager linearLayoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+                lastVisibleItem = linearLayoutManager.findLastVisibleItemPosition();
+            }
+        });
+    }
     @Override
     public void onPoiItemSearched(PoiItem poiItem, int i) {
 
@@ -176,6 +233,7 @@ public class PoiAddressActivity extends AppCompatActivity implements
 //                mAdapter.notifyDataSetChanged();
                 //停止刷新动画
                 poiBinding.swipeRefresh.setRefreshing(false);
+                Toast.makeText(PoiAddressActivity.this, "刷新成功", Toast.LENGTH_SHORT).show();
             }
         }, 3000);
     }

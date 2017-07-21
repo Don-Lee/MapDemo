@@ -34,9 +34,12 @@ public class MainActivity extends CheckPermissionActivity {
     }
 
     public void selectAddress(View view) {
+
         Intent intent = new Intent(this, PoiAddressActivity.class);
-        intent.putExtra("latitude", mapLocation.getLatitude());
-        intent.putExtra("longitude", mapLocation.getLongitude());
+        if (mapLocation != null) {
+            intent.putExtra("latitude", mapLocation.getLatitude());
+            intent.putExtra("longitude", mapLocation.getLongitude());
+        }
         startActivity(intent);
     }
 

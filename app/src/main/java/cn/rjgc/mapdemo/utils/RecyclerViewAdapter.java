@@ -11,14 +11,21 @@ import android.view.ViewGroup;
 import java.util.List;
 
 import cn.rjgc.mapdemo.bean.POI;
+import cn.rjgc.mapdemo.databinding.LayoutFooterviewRvBinding;
 import cn.rjgc.mapdemo.databinding.RecyclerviewItemBinding;
 
 /**
  * Created by Don on 2017/7/17.
  */
-//TODO 点击后出现选中的图片 http://blog.csdn.net/zxt0601/article/details/52703280
-public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.MyViewHolder>
+public class RecyclerViewAdapter extends RecyclerView.Adapter
 implements View.OnClickListener, View.OnLongClickListener{
+
+    private int myFooterView = 1;
+    private int myViewHoler = 0;
+    int load_more_status ;
+    public static final int PULLUP_LOAD_MORE = 0;
+    public static final int LOADING_MORE = 1;
+    public static final int NO_MORE = 2;
 
     private Context mContext;
     private List<POI> datas;
@@ -39,19 +46,42 @@ implements View.OnClickListener, View.OnLongClickListener{
     }
 
     @Override
-    public RecyclerViewAdapter.MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        RecyclerviewItemBinding binding = RecyclerviewItemBinding.inflate(inflater, parent, false);
-        binding.getRoot().setOnClickListener(this);//监听点击事件
-        binding.getRoot().setOnLongClickListener(this);
-        return new MyViewHolder(binding);
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        if (viewType == myViewHoler) {
+            RecyclerviewItemBinding binding = RecyclerviewItemBinding.inflate(inflater, parent, false);
+            binding.getRoot().setOnClickListener(this);//监听点击事件
+            binding.getRoot().setOnLongClickListener(this);
+            return new MyViewHolder(binding);
+        } else if (viewType == myFooterView) {
+            LayoutFooterviewRvBinding footerviewRvBinding = LayoutFooterviewRvBinding.inflate(inflater, parent, false);
+            return new MyFooterView(footerviewRvBinding);
+        }
+        return null;
     }
 
     @Override
-    public void onBindViewHolder(RecyclerViewAdapter.MyViewHolder holder, int position) {
-        holder.bindDatas(datas.get(position));
+    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof MyViewHolder) {
+            ((MyViewHolder) holder).bindDatas(datas.get(position));
 
-        holder.binding.getRoot().setTag(holder.getLayoutPosition());//方便在别的地方调用
-
+            ((MyViewHolder) holder).binding.getRoot().setTag(holder.getLayoutPosition());//方便在别的地方调用
+        } else {
+            MyFooterView footerView = (MyFooterView) holder;
+            switch (load_more_status) {
+                case PULLUP_LOAD_MORE:
+                    footerView.progressVisible(0);
+                    footerView.changeText("上拉加载更多...");
+                    break;
+                case LOADING_MORE:
+                    footerView.progressVisible(1);
+                    footerView.changeText("正在加载更多数据...");
+                    break;
+                case NO_MORE:
+                    footerView.progressVisible(0);
+                    footerView.changeText("没有更多数据");
+                    break;
+            }
+        }
 
     }
 
@@ -59,7 +89,7 @@ implements View.OnClickListener, View.OnLongClickListener{
     public int getItemCount() {
         int result = 0;
         if (datas != null) {
-            result = datas.size();
+            result = datas.size() + 1;//此处+1 是因为增加了上拉加载更多栏目
         }
         return result;
     }
@@ -72,6 +102,9 @@ implements View.OnClickListener, View.OnLongClickListener{
     public void deleteData(int position){
         datas.remove(position);
         notifyDataSetChanged();
+        if (position < mSelectedPos) {
+            mSelectedPos -= 1;
+        }
 //        notifyItemRemoved(position);  //此方法虽然也更新了recyclerview,但是item的索引没有更新
     }
 
@@ -89,6 +122,21 @@ implements View.OnClickListener, View.OnLongClickListener{
         }
     }
 
+    public void changeFooterViewState(int status)
+    {
+        load_more_status = status;
+        notifyDataSetChanged();
+    }
+    public void addMoreItem(List<POI> data) {
+        int preSize = datas.size();
+        if (data != null && data.size() > 0) {
+            datas.addAll(data);
+            notifyItemRangeInserted(preSize,datas.size());
+        }
+        notifyDataSetChanged();
+    }
+
+
     @Override
     public void onClick(View view) {
         if (mOnItemClickListener != null) {
@@ -105,6 +153,14 @@ implements View.OnClickListener, View.OnLongClickListener{
         return true;//返回true是为了终止事件得传递，否则的话还会触发onClick事件
     }
 
+    @Override
+    public int getItemViewType(int position) {
+        if (position + 1 == getItemCount()) {
+            return myFooterView;
+        } else {
+            return myViewHoler;
+        }
+    }
 
     public interface OnItemClickListener{
         void onItemClick(View view, int position);
@@ -135,13 +191,33 @@ implements View.OnClickListener, View.OnLongClickListener{
 
         public void bindDatas(POI poi) {
             binding.setAddress(poi);
-            Log.e("TAG", "bindDatas: "+poi.isSelected.get()+"--"+poi.address.get());
             if (poi.isSelected.get()) {
                 binding.selectedImg.setVisibility(View.VISIBLE);
             } else {
                 binding.selectedImg.setVisibility(View.GONE);
             }
             binding.executePendingBindings();
+        }
+    }
+
+    static class MyFooterView extends RecyclerView.ViewHolder{
+
+        private LayoutFooterviewRvBinding footerviewRvBinding;
+        public MyFooterView(LayoutFooterviewRvBinding footerviewRvBinding) {
+            super(footerviewRvBinding.getRoot());
+            this.footerviewRvBinding = footerviewRvBinding;
+        }
+
+        public void changeText(String s) {
+            footerviewRvBinding.loadmoreTv.setText(s);
+        }
+
+        public void progressVisible(int i){
+            if (i == 1) {
+                footerviewRvBinding.progressBar.setVisibility(View.VISIBLE);
+            }else {
+                footerviewRvBinding.progressBar.setVisibility(View.INVISIBLE);
+            }
         }
     }
 
